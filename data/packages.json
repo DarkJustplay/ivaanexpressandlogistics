@@ -1,0 +1,152 @@
+[
+  {
+    "id": "6126830414ed",
+    "awb": "D11234567IN",
+    "customer": "Rohit Sharma",
+    "origin": {
+      "city": "New Delhi",
+      "pin": "110001"
+    },
+    "destination": {
+      "city": "Mumbai",
+      "pin": "400001"
+    },
+    "status": "in-transit",
+    "statusName": "In Transit",
+    "statusDetail": "Departed Delhi gateway hub",
+    "eta": "23 May 2026",
+    "etaNote": "Tomorrow",
+    "booked": "20 May 2026",
+    "service": "DTDC Express",
+    "weight": "1.4 kg",
+    "pieces": 1,
+    "progress": 2,
+    "confidence": "92%",
+    "internalNote": "High priority customer shipment",
+    "source": "managed",
+    "events": [
+      {
+        "event": "Departed Delhi Gateway Hub",
+        "location": "IGI Cargo Complex, New Delhi",
+        "time": "22 May 2026, 4:12 AM"
+      },
+      {
+        "event": "Arrived at gateway hub",
+        "location": "Indira Gandhi International, New Delhi",
+        "time": "21 May 2026, 11:40 PM"
+      },
+      {
+        "event": "Package picked up",
+        "location": "Connaught Place, New Delhi - 110001",
+        "time": "21 May 2026, 6:45 PM"
+      },
+      {
+        "event": "Shipment booked",
+        "location": "DTDC Netaji Subhash Place",
+        "time": "20 May 2026, 2:30 PM"
+      }
+    ],
+    "createdAt": "2026-05-30T18:57:49.581Z",
+    "updatedAt": "2026-05-30T18:57:49.581Z"
+  },
+  {
+    "id": "4e969cbc8333",
+    "awb": "D98765432IN",
+    "customer": "Neha Iyer",
+    "origin": {
+      "city": "Bengaluru",
+      "pin": "560001"
+    },
+    "destination": {
+      "city": "New Delhi",
+      "pin": "110092"
+    },
+    "status": "delivered",
+    "statusName": "Delivered",
+    "statusDetail": "Signed by Raj Sharma",
+    "eta": "19 May 2026",
+    "etaNote": "Delivered on schedule",
+    "booked": "17 May 2026",
+    "service": "DTDC Priority",
+    "weight": "0.8 kg",
+    "pieces": 2,
+    "progress": 4,
+    "confidence": "100%",
+    "internalNote": "Delivered successfully",
+    "source": "managed",
+    "events": [
+      {
+        "event": "Delivered - Signed by Raj Sharma",
+        "location": "Preet Vihar, New Delhi - 110092",
+        "time": "19 May 2026, 11:22 AM"
+      },
+      {
+        "event": "Out for delivery",
+        "location": "Delhi East Distribution Hub",
+        "time": "19 May 2026, 7:58 AM"
+      },
+      {
+        "event": "Arrived at destination hub",
+        "location": "Patparganj Industrial Area, Delhi",
+        "time": "18 May 2026, 11:34 PM"
+      },
+      {
+        "event": "Departed origin gateway",
+        "location": "Kempegowda International Cargo, Bengaluru",
+        "time": "17 May 2026, 10:20 PM"
+      }
+    ],
+    "createdAt": "2026-05-30T18:57:49.582Z",
+    "updatedAt": "2026-05-30T18:57:49.582Z"
+  },
+  {
+    "id": "0fb144116308",
+    "awb": "D55501234IN",
+    "customer": "Arjun Patel",
+    "origin": {
+      "city": "Hyderabad",
+      "pin": "500001"
+    },
+    "destination": {
+      "city": "Gurugram",
+      "pin": "122002"
+    },
+    "status": "out-for-delivery",
+    "statusName": "Out for Delivery",
+    "statusDetail": "Arriving today before 7 PM",
+    "eta": "22 May 2026",
+    "etaNote": "Today before 7 PM",
+    "booked": "18 May 2026",
+    "service": "DTDC Ground",
+    "weight": "3.2 kg",
+    "pieces": 1,
+    "progress": 3,
+    "confidence": "88%",
+    "internalNote": "Call recipient before delivery",
+    "source": "managed",
+    "events": [
+      {
+        "event": "Out for delivery",
+        "location": "Gurugram South Distribution Centre",
+        "time": "22 May 2026, 8:44 AM"
+      },
+      {
+        "event": "Arrived at delivery hub",
+        "location": "Sector 18, Gurugram - 122002",
+        "time": "22 May 2026, 6:10 AM"
+      },
+      {
+        "event": "In transit",
+        "location": "DTDC Delhi-NCR Gateway",
+        "time": "21 May 2026, 9:30 PM"
+      },
+      {
+        "event": "Shipment booked",
+        "location": "DTDC Banjara Hills, Hyderabad",
+        "time": "18 May 2026, 10:00 AM"
+      }
+    ],
+    "createdAt": "2026-05-30T18:57:49.582Z",
+    "updatedAt": "2026-05-30T18:57:49.582Z"
+  }
+]

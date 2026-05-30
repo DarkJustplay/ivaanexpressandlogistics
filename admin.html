@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShipView - Private Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-page">
+  <div class="ambient" aria-hidden="true"></div>
+
+  <main class="admin-shell">
+    <section class="login-view mac-window" id="loginView" aria-label="Admin login">
+      <div class="window-bar">
+        <span class="traffic"><i></i><i></i><i></i></span>
+        <span class="window-title">Private access</span>
+        <span class="mode-badge">Admin only</span>
+      </div>
+      <div class="login-card">
+        <span class="brand-mark large" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5-8 4.5L4 8.5Z"/><path d="M4 8.5v7L12 20l8-4.5v-7"/><path d="M12 13v7"/></svg>
+        </span>
+        <h1>Private dashboard</h1>
+        <p>Add, remove, refresh, and manage packages. This area is protected by a server session.</p>
+        <form class="login-form" id="loginForm">
+          <label>
+            <span>Admin password</span>
+            <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Enter password">
+          </label>
+          <button class="primary-button" type="submit">Unlock dashboard</button>
+        </form>
+        <p class="soft-note">Starter password: <strong>shipview-admin</strong>. Change <strong>ADMIN_PASSWORD</strong> in your .env before going online.</p>
+      </div>
+    </section>
+
+    <section class="dashboard mac-window hidden" id="dashboardView" aria-label="Private package dashboard">
+      <aside class="sidebar">
+        <a class="brand" href="/">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5-8 4.5L4 8.5Z"/><path d="M4 8.5v7L12 20l8-4.5v-7"/><path d="M12 13v7"/></svg>
+          </span>
+          <span>
+            <strong>ShipView</strong>
+            <small>Owner console</small>
+          </span>
+        </a>
+
+        <nav class="side-nav" aria-label="Dashboard sections">
+          <a class="active" href="#packages">
+            <svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5-9 5-9-5Z"/><path d="M3 9v6l9 5 9-5V9"/></svg>
+            Dashboard
+          </a>
+          <a href="#addPackage">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Add package
+          </a>
+          <a href="#security">
+            <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V7l-8-4Z"/><path d="m9 12 2 2 4-5"/></svg>
+            API security
+          </a>
+        </nav>
+
+        <button class="signout-button" id="logoutButton" type="button">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Sign out
+        </button>
+      </aside>
+
+      <div class="dashboard-main">
+        <header class="dashboard-top">
+          <div>
+            <p class="lockline">
+              <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              Private dashboard
+            </p>
+            <h1>Packages</h1>
+            <p>Manage and track your consignments from a server-side control room.</p>
+          </div>
+          <div class="admin-status">
+            <span class="server-pill" id="adminBridge"><i></i>Demo mode</span>
+            <span class="avatar">AD</span>
+          </div>
+        </header>
+
+        <section class="dashboard-card" id="packages">
+          <div class="table-toolbar">
+            <div>
+              <h2>Managed packages</h2>
+              <p id="packageSummary">Loading packages</p>
+            </div>
+            <div class="toolbar-actions">
+              <button class="secondary-button compact" id="refreshAllButton" type="button">
+                <svg viewBox="0 0 24 24"><path d="M20 6v6h-6"/><path d="M4 18v-6h6"/><path d="M20 12a8 8 0 0 0-14.8-4"/><path d="M4 12a8 8 0 0 0 14.8 4"/></svg>
+                Refresh
+              </button>
+              <a class="primary-button compact" href="#addPackage">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                Add package
+              </a>
+            </div>
+          </div>
+
+          <div class="filters">
+            <label class="search-box">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+              <input id="searchInput" placeholder="Search by AWB, customer, route">
+            </label>
+            <label class="select-box">
+              <span>Status</span>
+              <select id="statusFilter">
+                <option value="all">All status</option>
+                <option value="booked">Booked</option>
+                <option value="picked-up">Picked Up</option>
+                <option value="in-transit">In Transit</option>
+                <option value="out-for-delivery">Out for Delivery</option>
+                <option value="delivered">Delivered</option>
+                <option value="exception">Exception</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>AWB</th>
+                  <th>Consignee</th>
+                  <th>Route</th>
+                  <th>Status</th>
+                  <th>Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="packageRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="dashboard-card add-card" id="addPackage">
+          <div class="table-toolbar">
+            <div>
+              <h2>Add package</h2>
+              <p>Add a new consignment to start tracking it privately.</p>
+            </div>
+          </div>
+
+          <form class="package-form" id="packageForm">
+            <label>
+              <span>AWB number</span>
+              <input name="awb" required placeholder="D12345678IN">
+            </label>
+            <label>
+              <span>Consignee name</span>
+              <input name="customer" required placeholder="Customer name">
+            </label>
+            <label>
+              <span>Origin</span>
+              <input name="originCity" placeholder="Mumbai">
+            </label>
+            <label>
+              <span>Destination</span>
+              <input name="destinationCity" placeholder="Bengaluru">
+            </label>
+            <label>
+              <span>ETA</span>
+              <input name="eta" placeholder="28 May 2026, 06:00 PM">
+            </label>
+            <label>
+              <span>Status</span>
+              <select name="status">
+                <option value="booked">Booked</option>
+                <option value="picked-up">Picked Up</option>
+                <option value="in-transit" selected>In Transit</option>
+                <option value="out-for-delivery">Out for Delivery</option>
+                <option value="delivered">Delivered</option>
+                <option value="exception">Exception</option>
+              </select>
+            </label>
+            <label>
+              <span>Service</span>
+              <input name="service" placeholder="DTDC Express">
+            </label>
+            <label>
+              <span>Weight</span>
+              <input name="weight" placeholder="1.2 kg">
+            </label>
+            <label class="wide">
+              <span>Private note</span>
+              <input name="internalNote" placeholder="Only visible in this dashboard">
+            </label>
+            <button class="primary-button" type="submit">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Add package
+            </button>
+          </form>
+        </section>
+
+        <section class="security-strip" id="security">
+          <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V7l-8-4Z"/><path d="m9 12 2 2 4-5"/></svg>
+          <div>
+            <strong>API key stays server-side.</strong>
+            <span>Add DTDC_API_KEY later in .env. Customers never receive it in browser code.</span>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>
