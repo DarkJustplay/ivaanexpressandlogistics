@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShipView - Headless DTDC Tracker</title>
+  <title>Ivaan Express & Logistics - Shipment Tracking</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="customer-page">
@@ -13,101 +13,129 @@
     <header class="topbar">
       <a class="brand" href="/">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M4 8.5 12 4l8 4.5-8 4.5L4 8.5Z"/><path d="M4 8.5v7L12 20l8-4.5v-7"/><path d="M12 13v7"/></svg>
+          <svg viewBox="0 0 24 24">
+            <path d="M4 8.5 12 4l8 4.5-8 4.5L4 8.5Z"/>
+            <path d="M4 8.5v7L12 20l8-4.5v-7"/>
+            <path d="M12 13v7"/>
+          </svg>
         </span>
         <span>
-          <strong>ShipView</strong>
-          <small>Headless DTDC tracker</small>
+          <strong>Ivaan Express & Logistics</strong>
+          <small>Shipment Tracking Portal</small>
         </span>
       </a>
+
       <nav class="top-actions" aria-label="Primary">
-        <span class="server-pill" id="serverState"><i></i>Checking bridge</span>
-        <a class="ghost-button" href="/admin">Owner dashboard</a>
+        <span class="server-pill" id="serverState">
+          <i></i>Service Online
+        </span>
       </nav>
     </header>
 
     <section class="customer-grid" aria-label="Shipment tracker">
       <div class="mac-window tracker-window">
         <div class="window-bar">
-          <span class="traffic"><i></i><i></i><i></i></span>
-          <span class="window-title">Customer tracking</span>
-          <span class="mode-badge" id="modeBadge">Demo mode</span>
+          <span class="traffic">
+            <i></i><i></i><i></i>
+          </span>
+          <span class="window-title">Shipment Tracking</span>
+          <span class="mode-badge" id="modeBadge">Live Tracking</span>
         </div>
 
         <div class="tracker-focus">
           <div class="tracker-copy">
-            <h1>Track shipment</h1>
-            <p>Enter a DTDC AWB number. Your future DTDC key stays on the server, never inside the customer page.</p>
+            <h1>Track Your Shipment</h1>
+            <p>
+              Enter your consignment or AWB number below to view the latest shipment status and delivery updates.
+            </p>
           </div>
 
           <form class="track-form" id="trackForm">
             <label class="track-input">
               <span aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                  <path d="m3.3 7 8.7 5 8.7-5"/>
+                  <path d="M12 22V12"/>
+                </svg>
               </span>
-              <input id="awbInput" name="awb" autocomplete="off" spellcheck="false" placeholder="Enter AWB number">
+              <input
+                id="awbInput"
+                name="awb"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Enter AWB / Consignment Number"
+              >
             </label>
+
             <button class="primary-button" id="trackButton" type="submit">
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-              Track
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m16.5 16.5 4 4"/>
+              </svg>
+              Track Shipment
             </button>
           </form>
-
-          <div class="quick-row" aria-label="Demo consignments">
-            <button type="button" data-awb="D11234567IN">D11234567IN</button>
-            <button type="button" data-awb="D98765432IN">D98765432IN</button>
-            <button type="button" data-awb="D55501234IN">D55501234IN</button>
-          </div>
         </div>
 
-        <section class="result-surface" id="resultSurface" aria-live="polite"></section>
+        <section
+          class="result-surface"
+          id="resultSurface"
+          aria-live="polite">
+        </section>
       </div>
 
       <aside class="glass-panel command-panel">
         <div class="panel-heading">
           <span class="panel-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V7l-8-4Z"/><path d="m9 12 2 2 4-5"/></svg>
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 4 7v5c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V7l-8-4Z"/>
+              <path d="m9 12 2 2 4-5"/>
+            </svg>
           </span>
+
           <div>
-            <h2>Server-side bridge</h2>
-            <p>Built for your DTDC key later.</p>
+            <h2>Reliable Shipment Updates</h2>
+            <p>Fast, secure and transparent tracking.</p>
           </div>
         </div>
 
         <div class="bridge-grid">
           <div>
-            <span>API key</span>
-            <strong id="keyState">Hidden</strong>
+            <span>Tracking Status</span>
+            <strong>Live</strong>
           </div>
+
           <div>
-            <span>Packages</span>
-            <strong id="managedCount">0 managed</strong>
+            <span>Coverage</span>
+            <strong>India Wide</strong>
           </div>
+
           <div>
-            <span>Endpoint</span>
-            <strong>/api/track</strong>
+            <span>Support</span>
+            <strong>Available</strong>
           </div>
+
           <div>
-            <span>Admin</span>
-            <strong>Password locked</strong>
+            <span>Security</span>
+            <strong>Protected</strong>
           </div>
         </div>
 
         <div class="saved-card">
           <div class="mini-head">
-            <h3>Private by design</h3>
-            <p>Customers can track shipments, but only you can add, edit, refresh, or remove packages from the dashboard.</p>
+            <h3>Customer Support</h3>
+            <p>
+              Need assistance with your shipment? Contact our support team for help regarding tracking, delivery updates, or shipment inquiries.
+            </p>
           </div>
-          <a class="secondary-button" href="/admin">
-            Open dashboard
-            <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-          </a>
         </div>
       </aside>
     </section>
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
   <script src="customer.js"></script>
 </body>
 </html>
