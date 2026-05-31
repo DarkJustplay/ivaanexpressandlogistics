@@ -12,7 +12,7 @@ const sessionToken = crypto.randomBytes(32).toString("hex");
 
 loadEnvFile();
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "shipview-admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ivaanexpress@006";
 
 const STATUS = {
   booked: {
