@@ -63,7 +63,7 @@ async function checkHealth() {
   const pill = $("adminBridge");
   pill.classList.toggle("live", Boolean(state.health.hasApiKey));
   pill.classList.toggle("warn", !state.health.hasApiKey);
-  pill.lastChild.textContent = state.health.hasApiKey ? "Live bridge" : "Demo mode";
+  pill.lastChild.textContent = "Dashboard";
 }
 
 async function checkSession() {
