@@ -123,13 +123,13 @@ function updateHealthUI() {
 
   serverState.classList.toggle("live", state.health.reachable);
   serverState.classList.toggle("warn", state.health.reachable && !state.health.hasApiKey);
-  serverState.lastChild.textContent = state.health.reachable
-    ? state.health.hasApiKey ? "Live bridge" : "Demo bridge"
-    : "File preview";
+serverState.lastChild.textContent = "Tracking Service";
 
-  modeBadge.textContent = state.health.hasApiKey ? "Live mode" : "Demo mode";
-  keyState.textContent = state.health.hasApiKey ? "Configured" : "Placeholder";
-  managedCount.textContent = `${state.health.managedCount || 0} managed`;
+if (modeBadge) {
+  modeBadge.style.display = "none";
+}
+  keyState.textContent = "Active";
+  managedCount.textContent = `${state.health.managedCount || 0} shipments`;
 }
 
 async function checkHealth() {
@@ -154,12 +154,12 @@ function localShipment(awb) {
   return {
     awb: key,
     status: "exception",
-    statusName: "Ready for Admin",
-    statusDetail: "This package is not in your private dashboard yet",
+    statusName: "Shipment Not Found",
+    statusDetail: "No shipment was found with this consignment number",
     origin: { city: "Awaiting scan", pin: "" },
     destination: { city: "Awaiting API", pin: "" },
     eta: "TBD",
-    etaNote: "Add this package from Admin",
+    etaNote: "",
     booked: "TBD",
     service: "DTDC",
     weight: "--",
@@ -167,7 +167,7 @@ function localShipment(awb) {
     progress: 0,
     confidence: "--",
     source: "demo",
-    events: [{ event: "Consignment not yet managed", location: "Private admin dashboard", time: "Now" }],
+    events: [{ event: "No tracking information available", location: "", time: "Now" }],
   };
 }
 
@@ -261,14 +261,14 @@ function renderEmpty() {
       <div>
         ${ICONS.box}
         <h2>Ready when you are</h2>
-        <p>Enter a consignment number or use one of the demo AWBs to see the visual route tracker, status, and timeline.</p>
+        <p>Enter your consignment number to view shipment status, delivery updates, and tracking information.</p>
       </div>
     </section>
     <section class="journey-card empty-state">
       <div>
         ${ICONS.shield}
-        <h3>Headless by design</h3>
-        <p>The browser talks to your local server. The future DTDC key stays hidden in .env.</p>
+        <h3>Secure Tracking</h3>
+        <p>Shipment information is processed securely through our tracking infrastructure.</p>
       </div>
     </section>
   `;
@@ -280,7 +280,7 @@ function renderLoading(awb) {
       <div>
         ${ICONS.truck}
         <h2>Tracking ${escapeHtml(awb)}</h2>
-        <p>Asking the private bridge for the latest shipment state.</p>
+        <p>Retrieving latest shipment information.</p>
       </div>
     </section>
     <section class="journey-card empty-state">
@@ -314,7 +314,6 @@ function renderResult(d) {
     ["Weight", d.weight || "--"],
     ["Confidence", d.confidence || "--"],
     ["Booked", d.booked || "--"],
-    ["Source", d.source || "managed"],
   ];
 
   $("resultSurface").innerHTML = `
@@ -375,10 +374,10 @@ async function trackAwb(raw) {
   try {
     const shipment = await fetchTracking(awb);
     renderResult(shipment);
-    showToast(shipment.source === "live" ? "Live scan loaded" : "Tracking loaded");
+    showToast("Shipment information loaded");
   } catch (error) {
     renderError(awb, error);
-    showToast("Tracking is not ready");
+    showToast("Unable to retrieve shipment information");
   } finally {
     $("trackButton").disabled = false;
   }
