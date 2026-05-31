@@ -468,6 +468,7 @@ function serveStatic(req, res) {
     "/customer.js",
     "/admin.js",
     "/shipview-glass-concept.png",
+     "/ads.txt",
   ]);
 
   if (!publicFiles.has(pathname)) {
