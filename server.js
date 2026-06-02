@@ -201,7 +201,7 @@ function normalizePackage(input, source) {
           location: safeText(event.location),
           time: safeText(event.time || event.timestamp || displayDate(new Date())),
         }))
-      : [{ event: "Package added to ShipView", location: safeText(input.origin?.city || input.originCity || "Private dashboard"), time: displayDate(new Date()) }],
+      : [{ event: "Shipment Created", location: safeText(input.origin?.city || input.originCity || "Private dashboard"), time: displayDate(new Date()) }],
     createdAt: input.createdAt || now,
     updatedAt: input.updatedAt || now,
   };
@@ -354,13 +354,17 @@ async function fetchLiveShipment(awb) {
   );
 
   const data = await response.json();
-  console.log(JSON.stringify(data.trackHeader, null, 2));
+  console.log(JSON.stringify(data, null, 2));
 
-  if (!data.statusFlag) {
-    throw new Error(
-      data?.errorDetails?.[0]?.value || "Shipment not found"
-    );
-  }
+if (!data.statusFlag) {
+  const errorMessage =
+    data?.errorDetails?.find(
+      item => item.name === "strError"
+    )?.value ||
+    "Shipment not found";
+
+  throw new Error(errorMessage);
+}
 
   return mapLiveResponse(awb, data);
 }
@@ -489,7 +493,7 @@ function createPackageFromBody(body) {
     weight: body.weight || "--",
     pieces: body.pieces || 1,
     internalNote: body.internalNote,
-    events: [{ event: "Package added to ShipView", location: body.originCity || body.origin || "Private dashboard", time: displayDate(new Date()) }],
+    events: [{ event: "Shipment Created", location: body.originCity || body.origin || "Private dashboard", time: displayDate(new Date()) }],
   }, "managed");
 }
 
@@ -750,6 +754,6 @@ const server = http.createServer(async (req, res) => {
 ensureStore();
 
 server.listen(PORT, () => {
-  console.log(`ShipView running at http://127.0.0.1:${PORT}`);
+  console.log(`Ivaan Express Tracker running at http://127.0.0.1:${PORT}`);
   console.log(`Private admin dashboard at http://127.0.0.1:${PORT}/admin`);
 });
