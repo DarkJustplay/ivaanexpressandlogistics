@@ -311,8 +311,6 @@ function renderResult(d) {
     ["Origin", [d.origin?.city, d.origin?.pin].filter(Boolean).join(" - ") || "--"],
     ["Destination", [d.destination?.city, d.destination?.pin].filter(Boolean).join(" - ") || "--"],
     ["Service", d.service || "DTDC"],
-    ["Weight", d.weight || "--"],
-    ["Confidence", d.confidence || "--"],
     ["Booked", d.booked || "--"],
   ];
 

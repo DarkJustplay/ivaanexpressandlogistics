@@ -337,54 +337,142 @@ function demoShipment(awb) {
 }
 
 async function fetchLiveShipment(awb) {
-  const endpoint = process.env.DTDC_API_URL || "https://api.dtdc.com/tracking";
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.DTDC_API_KEY}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ consignment_no: awb, awb }),
-  });
-  if (!response.ok) throw new Error(`DTDC API returned ${response.status}`);
-  return mapLiveResponse(awb, await response.json());
-}
+  const response = await fetch(
+    "https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-access-token": process.env.DTDC_API_KEY
+      },
+      body: JSON.stringify({
+        trkType: "cnno",
+        strcnno: awb,
+        addtnlDtl: "Y"
+      })
+    }
+  );
 
+  const data = await response.json();
+  console.log(JSON.stringify(data.trackHeader, null, 2));
+
+  if (!data.statusFlag) {
+    throw new Error(
+      data?.errorDetails?.[0]?.value || "Shipment not found"
+    );
+  }
+
+  return mapLiveResponse(awb, data);
+}
+function dtdcDate(value) {
+  if (!value || value.length !== 8) return value || "";
+
+  const day = value.slice(0, 2);
+  const month = value.slice(2, 4);
+  const year = value.slice(4, 8);
+
+  const months = [
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec"
+  ];
+
+  return `${day} ${months[Number(month) - 1]} ${year}`;
+}
+function dtdcDateTime(date, time) {
+  const formattedDate = dtdcDate(date);
+
+  if (!time || time.length !== 4) {
+    return formattedDate;
+  }
+
+  const hh = time.slice(0, 2);
+  const mm = time.slice(2, 4);
+
+  return `${formattedDate}, ${hh}:${mm}`;
+}
 function mapLiveResponse(awb, data) {
-  const raw = String(data.status || data.current_status || "").toUpperCase().replace(/\s+/g, "_");
-  const statusMap = {
-    DELIVERED: "delivered",
-    OUT_FOR_DELIVERY: "out-for-delivery",
-    IN_TRANSIT: "in-transit",
-    PICKED_UP: "picked-up",
-    BOOKED: "booked",
-    EXCEPTION: "exception",
-  };
-  const status = statusMap[raw] || "in-transit";
-  const events = data.tracking_events || data.events || [];
+  const header = data.trackHeader || {};
+  const details = data.trackDetails || [];
+
+  const statusText = String(header.strStatus || "").toLowerCase();
+
+  let status = "in-transit";
+
+  if (statusText.includes("delivered")) {
+    status = "delivered";
+  } else if (statusText.includes("out for delivery")) {
+    status = "out-for-delivery";
+  } else if (statusText.includes("booked")) {
+    status = "booked";
+  }
+
+const events = [];
+const seenActions = new Set();
+
+details
+  .slice()
+  .reverse()
+  .forEach(item => {
+    const event = item.strAction || item.strCode || "Shipment Update";
+
+    const normalized = event.toLowerCase();
+
+    if (
+      normalized.includes("in transit") &&
+      seenActions.has("in-transit")
+    ) {
+      return;
+    }
+
+    if (normalized.includes("in transit")) {
+      seenActions.add("in-transit");
+    }
+
+    events.push({
+      event,
+
+      location:
+        item.strOrigin && item.strDestination
+          ? `${item.strOrigin} → ${item.strDestination}`
+          : item.strOrigin || item.strDestination || "",
+
+      time: dtdcDateTime(
+        item.strActionDate,
+        item.strActionTime
+      )
+    });
+  });
   return normalizePackage({
     awb,
+
     status,
-    statusDetail: data.status_description || data.description || events[0]?.description || STATUS[status].detail,
-    origin: { city: data.origin_city || data.origin || "", pin: data.origin_pin || "" },
-    destination: { city: data.destination_city || data.destination || "", pin: data.destination_pin || "" },
-    eta: data.estimated_delivery || data.eta || "TBD",
-    etaNote: data.delivery_remark || "",
-    booked: data.booking_date || "",
-    service: data.service_type || data.product || "DTDC",
-    weight: data.weight ? `${data.weight} kg` : "--",
-    pieces: data.pieces || 1,
-    confidence: data.confidence || "--",
-    events: events.map((item) => ({
-      event: item.description || item.status || "Shipment update",
-      location: item.location || "",
-      time: item.timestamp || item.time || "",
-    })),
-    updatedAt: new Date().toISOString(),
+
+    statusDetail: header.strStatus || "In Transit",
+
+    origin: {
+      city: header.strOrigin || "",
+      pin: ""
+    },
+
+    destination: {
+      city: header.strDestination || "",
+      pin: ""
+    },
+
+    booked: dtdcDate(header.strBookedDate),
+
+    eta: dtdcDate(
+  header.strRevExpectedDeliveryDate ||
+  header.strExpectedDeliveryDate
+),
+
+    service: header.strCNProduct || "DTDC",
+
+    pieces: Number(header.strPieces || 1),
+    events,
+    updatedAt: new Date().toISOString()
   }, "live");
 }
-
 function createPackageFromBody(body) {
   const awb = normalizeAwb(body.awb);
   if (!awb) throw new Error("AWB number is required");
