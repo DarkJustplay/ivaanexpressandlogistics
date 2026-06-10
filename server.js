@@ -338,77 +338,53 @@ function demoShipment(awb) {
 
 async function fetchLiveShipment(awb) {
   const response = await fetch(
-    "https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails",
+    "https://www.dtdc.com/wp-json/custom/v1/domestic/track",
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-access-token": process.env.DTDC_API_KEY
-      },
+  "Content-Type": "application/json; charset=UTF-8",
+  Origin: "https://www.dtdc.com",
+  Referer: `https://www.dtdc.com/track-your-shipment/?awb=${awb}`,
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+  Cookie:
+    "AWSALBTG=RTXfMAk46EMjOiNNMyaz7qs9MPNHs01Q62sooelakMMmr5iu+dGsHbHaAneM6B8z4oGGh5nw9nhW/yBJy4TSktoeRGJ9mQxV6gNEZNHqy2vqSxfT1B5NH0XWDeJdd6PkokGbpBH4o+UefofcoaUXd1+gmG6vuEqy3VNXmYuNH8Mw; AWSALBTGCORS=RTXfMAk46EMjOiNNMyaz7qs9MPNHs01Q62sooelakMMmr5iu+dGsHbHaAneM6B8z4oGGh5nw9nhW/yBJy4TSktoeRGJ9mQxV6gNEZNHqy2vqSxfT1B5NH0XWDeJdd6PkokGbpBH4o+UefofcoaUXd1+gmG6vuEqy3VNXmYuNH8Mw"
+},
       body: JSON.stringify({
-        trkType: "cnno",
-        strcnno: awb,
-        addtnlDtl: "Y"
+       trackType: "cnno",
+       trackNumber: awb
       })
     }
   );
 
   const data = await response.json();
+
   console.log(JSON.stringify(data, null, 2));
 
-if (!data.statusFlag) {
-  const errorMessage =
-    data?.errorDetails?.find(
-      item => item.name === "strError"
-    )?.value ||
-    "Shipment not found";
-
-  throw new Error(errorMessage);
-}
+  if (data.statusCode !== 200) {
+    throw new Error(
+      data.message || "Shipment not found"
+    );
+  }
 
   return mapLiveResponse(awb, data);
 }
-function dtdcDate(value) {
-  if (!value || value.length !== 8) return value || "";
-
-  const day = value.slice(0, 2);
-  const month = value.slice(2, 4);
-  const year = value.slice(4, 8);
-
-  const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec"
-  ];
-
-  return `${day} ${months[Number(month) - 1]} ${year}`;
-}
-function dtdcDateTime(date, time) {
-  const formattedDate = dtdcDate(date);
-
-  if (!time || time.length !== 4) {
-    return formattedDate;
-  }
-
-  const hh = time.slice(0, 2);
-  const mm = time.slice(2, 4);
-
-  return `${formattedDate}, ${hh}:${mm}`;
-}
 function mapLiveResponse(awb, data) {
-  const header = data.trackHeader || {};
-  const details = data.trackDetails || [];
+const header = data.header || {};
+const details = data.statuses || [];
+const statusText = String(
+  header.currentStatusDescription || ""
+).toLowerCase();
 
-  const statusText = String(header.strStatus || "").toLowerCase();
+let status = "in-transit";
 
-  let status = "in-transit";
-
-  if (statusText.includes("delivered")) {
-    status = "delivered";
-  } else if (statusText.includes("out for delivery")) {
-    status = "out-for-delivery";
-  } else if (statusText.includes("booked")) {
-    status = "booked";
-  }
+if (statusText.includes("delivered")) {
+  status = "delivered";
+} else if (statusText.includes("out for delivery")) {
+  status = "out-for-delivery";
+} else if (statusText.includes("booked")) {
+  status = "booked";
+}
 
 const events = [];
 const seenActions = new Set();
@@ -417,7 +393,8 @@ details
   .slice()
   .reverse()
   .forEach(item => {
-    const event = item.strAction || item.strCode || "Shipment Update";
+    const event =
+  item.statusDescription || "Shipment Update";
 
     const normalized = event.toLowerCase();
 
@@ -436,14 +413,13 @@ details
       event,
 
       location:
-        item.strOrigin && item.strDestination
-          ? `${item.strOrigin} → ${item.strDestination}`
-          : item.strOrigin || item.strDestination || "",
+  item.actBranchName ||
+  item.actCityName ||
+  "",
 
       time: dtdcDateTime(
-        item.strActionDate,
-        item.strActionTime
-      )
+  item.statusTimestamp
+)
     });
   });
   return normalizePackage({
@@ -451,31 +427,64 @@ details
 
     status,
 
-    statusDetail: header.strStatus || "In Transit",
+    statusDetail:
+  header.currentStatusDescription || "In Transit",
 
     origin: {
-      city: header.strOrigin || "",
+      city: header.originCity || "",
       pin: ""
     },
 
     destination: {
-      city: header.strDestination || "",
+      city: header.destinationCity || "",
       pin: ""
     },
 
-    booked: dtdcDate(header.strBookedDate),
-
     eta: dtdcDate(
-  header.strRevExpectedDeliveryDate ||
-  header.strExpectedDeliveryDate
+  header.opsEdd
 ),
 
-    service: header.strCNProduct || "DTDC",
+    service:
+  header.serviceName || "DTDC",
 
-    pieces: Number(header.strPieces || 1),
+    pieces: Number(header.noOfPieces || 1),
     events,
     updatedAt: new Date().toISOString()
   }, "live");
+}
+function dtdcDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(date);
+}
+
+function dtdcDateTime(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
 }
 function createPackageFromBody(body) {
   const awb = normalizeAwb(body.awb);
@@ -529,14 +538,8 @@ function patchPackage(pkg, body) {
 }
 
 async function refreshManagedPackage(pkg) {
-  if (!process.env.DTDC_API_KEY) {
-    return normalizePackage({
-      ...pkg,
-      statusDetail: `${pkg.statusDetail || STATUS[pkg.status].detail} - waiting for DTDC API key`,
-      updatedAt: new Date().toISOString(),
-    }, "managed");
-  }
   const live = await fetchLiveShipment(pkg.awb);
+
   return normalizePackage({
     ...pkg,
     ...live,
@@ -627,11 +630,6 @@ const server = http.createServer(async (req, res) => {
 
       if (body.mode !== "live") {
         sendJson(res, 200, { shipment: demoShipment(awb) });
-        return;
-      }
-
-      if (!process.env.DTDC_API_KEY || process.env.DTDC_API_KEY === "your_key_here") {
-        sendJson(res, 503, { error: "DTDC_API_KEY is not configured on the server" });
         return;
       }
 
