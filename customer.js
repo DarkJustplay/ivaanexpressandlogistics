@@ -311,7 +311,7 @@ function renderResult(d) {
     ["Origin", [d.origin?.city, d.origin?.pin].filter(Boolean).join(" - ") || "--"],
     ["Destination", [d.destination?.city, d.destination?.pin].filter(Boolean).join(" - ") || "--"],
     ["Service", d.service || "DTDC"],
-    ["Booked", d.booked || "--"],
+    ["Shipment Accepted", d.booked || "--"],
   ];
 
   $("resultSurface").innerHTML = `

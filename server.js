@@ -444,6 +444,9 @@ details
   header.opsEdd
 ),
 
+booked: dtdcDateTime(
+  `${header.bookingDate} ${header.bookingTime || ""}`
+),
     service:
   header.serviceName || "DTDC",
 
