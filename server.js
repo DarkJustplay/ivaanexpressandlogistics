@@ -604,7 +604,13 @@ function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
-
+if (req.method === "GET" && pathname === "/about.html") {
+  return serveFile(
+    res,
+    path.join(ROOT, "about.html"),
+    "text/html"
+  );
+}
   if (req.method === "GET" && pathname === "/api/health") {
     sendJson(res, 200, {
       reachable: true,
