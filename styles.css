@@ -94,7 +94,7 @@ svg {
   background:
     linear-gradient(128deg, transparent 7%, rgba(76, 211, 196, .2) 23%, transparent 42%),
     linear-gradient(54deg, transparent 42%, rgba(135, 208, 255, .17) 68%, transparent 87%);
-  filter: blur(28px);
+  filter: blur(12px);
   opacity: .9;
   transform: translateZ(0);
 }
@@ -278,8 +278,8 @@ svg {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .16);
-  backdrop-filter: blur(28px) saturate(1.25);
-  -webkit-backdrop-filter: blur(28px) saturate(1.25);
+backdrop-filter: blur(12px) saturate(1.08);
+-webkit-backdrop-filter: blur(12px) saturate(1.08);
 }
 
 .mac-window::before,
@@ -1530,4 +1530,13 @@ td strong {
     transition: none !important;
     animation: none !important;
   }
+}
+
+.network-panel,
+.india-svg-wrap,
+.hero-visual,
+.glass-panel {
+  contain: layout paint;
+  isolation: isolate;
+  transform: translateZ(0);
 }

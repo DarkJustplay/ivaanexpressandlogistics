@@ -117,12 +117,13 @@
 }
 
 .india-svg{
-  width: min(92%, 620px);
-  height: auto;
-  display: block;
-  filter: drop-shadow(0 0 50px rgba(156,222,254,.22));
-}
+  width:min(92%,620px);
+  height:auto;
+  display:block;
 
+  transform:translate3d(0,0,0);
+  backface-visibility:hidden;
+}
     /* Floating AWB cards */
     .awb-card {
       position: absolute; z-index: 5; padding: 10px 14px; border-radius: 14px;
