@@ -556,7 +556,8 @@ async function refreshManagedPackage(pkg) {
 function serveStatic(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   let pathname = decodeURIComponent(url.pathname);
-  if (pathname === "/") pathname = "/index.html";
+  if (pathname === "/") pathname = "/about.html";
+  if (pathname === "/tracker") pathname = "/index.html";
   if (pathname === "/admin" || pathname === "/admin/") pathname = "/admin.html";
 
   const publicFiles = new Set([
@@ -564,6 +565,7 @@ function serveStatic(req, res) {
     "/admin.html",
     "/styles.css",
     "/customer.js",
+    "/about.html",
     "/admin.js",
     "/shipview-glass-concept.png",
      "/ads.txt",
@@ -605,11 +607,17 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
 if (req.method === "GET" && pathname === "/about.html") {
-  return serveFile(
-    res,
+  const html = fs.readFileSync(
     path.join(ROOT, "about.html"),
-    "text/html"
+    "utf8"
   );
+
+  res.writeHead(200, {
+    "Content-Type": "text/html"
+  });
+
+  res.end(html);
+  return;
 }
   if (req.method === "GET" && pathname === "/api/health") {
     sendJson(res, 200, {

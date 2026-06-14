@@ -6,11 +6,14 @@
   <title>Ivaan Express & Logistics - Shipment Tracking</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body class="customer-page">
   <div class="ambient" aria-hidden="true"></div>
 
   <main class="page-shell">
+
     <header class="topbar">
+
       <a class="brand" href="/">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -19,6 +22,7 @@
             <path d="M12 13v7"/>
           </svg>
         </span>
+
         <span>
           <strong>Ivaan Express & Logistics</strong>
           <small>Shipment Tracking Portal</small>
@@ -26,36 +30,53 @@
       </a>
 
       <nav class="top-actions" aria-label="Primary">
+
+        <a href="/about.html" class="ghost-button compact">
+          About Us
+        </a>
+
         <span class="server-pill" id="serverState">
           <i></i>Service Online
         </span>
+
       </nav>
+
     </header>
-    
-    <a href="/about.html" class="ghost-button compact">
-  About Us
-</a>
 
     <section class="customer-grid" aria-label="Shipment tracker">
+
       <div class="mac-window tracker-window">
+
         <div class="window-bar">
           <span class="traffic">
             <i></i><i></i><i></i>
           </span>
-          <span class="window-title">Shipment Tracking</span>
-          <span class="mode-badge" id="modeBadge">Live Tracking</span>
+
+          <span class="window-title">
+            Shipment Tracking
+          </span>
+
+          <span class="mode-badge" id="modeBadge">
+            Live Tracking
+          </span>
         </div>
 
         <div class="tracker-focus">
+
           <div class="tracker-copy">
             <h1>Track Your Shipment</h1>
+
             <p>
-              Enter your consignment or AWB number below to view the latest shipment status and delivery updates.
+              Enter your consignment or AWB number below
+              to view the latest shipment status and
+              delivery updates.
             </p>
           </div>
 
           <form class="track-form" id="trackForm">
+
             <label class="track-input">
+
               <span aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
@@ -63,6 +84,7 @@
                   <path d="M12 22V12"/>
                 </svg>
               </span>
+
               <input
                 id="awbInput"
                 name="awb"
@@ -70,16 +92,25 @@
                 spellcheck="false"
                 placeholder="Enter AWB / Consignment Number"
               >
+
             </label>
 
-            <button class="primary-button" id="trackButton" type="submit">
+            <button
+              class="primary-button"
+              id="trackButton"
+              type="submit">
+
               <svg viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m16.5 16.5 4 4"/>
               </svg>
+
               Track Shipment
+
             </button>
+
           </form>
+
         </div>
 
         <section
@@ -87,10 +118,13 @@
           id="resultSurface"
           aria-live="polite">
         </section>
+
       </div>
 
       <aside class="glass-panel command-panel">
+
         <div class="panel-heading">
+
           <span class="panel-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M12 3 4 7v5c0 5 3.4 8.7 8 9 4.6-.3 8-4 8-9V7l-8-4Z"/>
@@ -102,9 +136,11 @@
             <h2>Reliable Shipment Updates</h2>
             <p>Fast, secure and transparent tracking.</p>
           </div>
+
         </div>
 
         <div class="bridge-grid">
+
           <div>
             <span>Tracking Status</span>
             <strong>Live</strong>
@@ -124,22 +160,41 @@
             <span>Security</span>
             <strong>Protected</strong>
           </div>
+
         </div>
 
         <div class="saved-card">
+
           <div class="mini-head">
+
             <h3>Customer Support</h3>
+
             <p>
-              Need assistance with your shipment? Contact our support team for help regarding tracking, delivery updates, or shipment inquiries.
+              Need assistance with your shipment?
+              Contact our support team for help
+              regarding tracking, delivery updates,
+              or shipment inquiries.
             </p>
+
           </div>
+
         </div>
+
       </aside>
+
     </section>
+
   </main>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div
+    class="toast"
+    id="toast"
+    role="status"
+    aria-live="polite">
+  </div>
 
   <script src="customer.js"></script>
-</body><nav>
+
+</body>
 </html>
+```

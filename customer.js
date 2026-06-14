@@ -121,17 +121,29 @@ function updateHealthUI() {
   const keyState = $("keyState");
   const managedCount = $("managedCount");
 
-  serverState.classList.toggle("live", state.health.reachable);
-  serverState.classList.toggle("warn", state.health.reachable && !state.health.hasApiKey);
-serverState.lastChild.textContent = "Tracking Service";
+  if (serverState) {
+    serverState.classList.toggle("live", state.health.reachable);
+    serverState.classList.toggle(
+      "warn",
+      state.health.reachable && !state.health.hasApiKey
+    );
 
-if (modeBadge) {
-  modeBadge.style.display = "none";
-}
-  keyState.textContent = "Active";
-  managedCount.textContent = `${state.health.managedCount || 0} shipments`;
-}
+    serverState.lastChild.textContent = "Tracking Service";
+  }
 
+  if (modeBadge) {
+    modeBadge.style.display = "none";
+  }
+
+  if (keyState) {
+    keyState.textContent = "Active";
+  }
+
+  if (managedCount) {
+    managedCount.textContent =
+      `${state.health.managedCount || 0} shipments`;
+  }
+}
 async function checkHealth() {
   if (location.protocol === "file:") {
     state.health = { reachable: false, hasApiKey: false, demoMode: true, managedCount: Object.keys(LOCAL_DEMO).length };
