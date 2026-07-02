@@ -6,13 +6,16 @@ const crypto = require("crypto");
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const PACKAGE_FILE = path.join(DATA_DIR, "packages.json");
-const PORT = Number(process.env.PORT || 4173);
 const SESSION_COOKIE = "sv_admin";
 const sessionToken = crypto.randomBytes(32).toString("hex");
 
 loadEnvFile();
 
+const PORT = Number(process.env.PORT || 4173);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Ivaanexpress@006";
+const DTDC_TRACK_URL = process.env.DTDC_TRACK_URL
+  || process.env.DTDC_API_URL
+  || "https://blktracksvc.dtdc.com/dtdc-api/rest/JSONCnTrk/getTrackDetails";
 
 const STATUS = {
   booked: {
@@ -158,6 +161,17 @@ function normalizeAwb(value) {
 }
 
 function safeText(value, fallback = "") {
+  if (value && typeof value === "object") {
+    return safeText(
+      value.city
+        || value.name
+        || value.location
+        || value.branch
+        || value.strOrigin
+        || value.strDestination,
+      fallback,
+    );
+  }
   return String(value || fallback).trim();
 }
 
@@ -336,121 +350,337 @@ function demoShipment(awb) {
   };
 }
 
-async function fetchLiveShipment(awb) {
-  const response = await fetch(
-    "https://www.dtdc.com/wp-json/custom/v1/domestic/track",
-    {
-      method: "POST",
-      headers: {
-  "Content-Type": "application/json; charset=UTF-8",
-  Origin: "https://www.dtdc.com",
-  Referer: `https://www.dtdc.com/track-your-shipment/?awb=${awb}`,
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
-  Cookie:
-    "AWSALBTG=RTXfMAk46EMjOiNNMyaz7qs9MPNHs01Q62sooelakMMmr5iu+dGsHbHaAneM6B8z4oGGh5nw9nhW/yBJy4TSktoeRGJ9mQxV6gNEZNHqy2vqSxfT1B5NH0XWDeJdd6PkokGbpBH4o+UefofcoaUXd1+gmG6vuEqy3VNXmYuNH8Mw; AWSALBTGCORS=RTXfMAk46EMjOiNNMyaz7qs9MPNHs01Q62sooelakMMmr5iu+dGsHbHaAneM6B8z4oGGh5nw9nhW/yBJy4TSktoeRGJ9mQxV6gNEZNHqy2vqSxfT1B5NH0XWDeJdd6PkokGbpBH4o+UefofcoaUXd1+gmG6vuEqy3VNXmYuNH8Mw"
-},
-      body: JSON.stringify({
-       trackType: "cnno",
-       trackNumber: awb
-      })
-    }
-  );
+function isConfiguredSecret(value) {
+  return Boolean(value)
+    && value !== "your_key_here"
+    && value !== "your_api_key_here"
+    && value !== "your_track_token_here"
+    && !String(value).startsWith("your_");
+}
 
-  const data = await response.json();
+function dtdcEnvName(vendor, key) {
+  return `DTDC_${String(vendor).toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${key}`;
+}
 
-  console.log(JSON.stringify(data, null, 2));
+function getDtdcVendorProfiles() {
+  const configuredVendors = String(process.env.DTDC_VENDORS || "")
+    .split(",")
+    .map((vendor) => vendor.trim())
+    .filter(Boolean);
 
-  if (data.statusCode !== 200) {
-    throw new Error(
-      data.message || "Shipment not found"
-    );
+  const vendors = configuredVendors.length ? configuredVendors : ["LL2462", "LL2487"];
+  const profiles = [];
+
+  for (const vendor of vendors) {
+    const token = process.env[dtdcEnvName(vendor, "TRACK_TOKEN")]
+      || process.env[dtdcEnvName(vendor, "ACCESS_TOKEN")]
+      || process.env[dtdcEnvName(vendor, "X_ACCESS_TOKEN")];
+
+    if (!isConfiguredSecret(token)) continue;
+
+    profiles.push({
+      vendor,
+      customerCode: process.env[dtdcEnvName(vendor, "CUSTOMER_CODE")] || vendor,
+      token,
+      apiKey: process.env[dtdcEnvName(vendor, "API_KEY")] || "",
+    });
   }
 
-  return mapLiveResponse(awb, data);
+  const legacyToken = process.env.DTDC_TRACK_TOKEN
+    || process.env.DTDC_ACCESS_TOKEN
+    || process.env.DTDC_X_ACCESS_TOKEN
+    || process.env.DTDC_API_KEY;
+
+  if (isConfiguredSecret(legacyToken) && !profiles.some((profile) => profile.token === legacyToken)) {
+    profiles.push({
+      vendor: process.env.DTDC_VENDOR_DEFAULT || "legacy",
+      customerCode: process.env.DTDC_CUSTOMER_CODE || "",
+      token: legacyToken,
+      apiKey: process.env.DTDC_TRACK_TOKEN ? process.env.DTDC_API_KEY || "" : "",
+    });
+  }
+
+  const preferred = process.env.DTDC_VENDOR_DEFAULT;
+  if (preferred) {
+    profiles.sort((a, b) => {
+      if (a.vendor === preferred) return -1;
+      if (b.vendor === preferred) return 1;
+      return 0;
+    });
+  }
+
+  return profiles;
 }
-function mapLiveResponse(awb, data) {
-const header = data.header || {};
-const details = data.statuses || [];
-const statusText = String(
-  header.currentStatusDescription || ""
-).toLowerCase();
 
-let status = "in-transit";
-
-if (statusText.includes("delivered")) {
-  status = "delivered";
-} else if (statusText.includes("out for delivery")) {
-  status = "out-for-delivery";
-} else if (statusText.includes("booked")) {
-  status = "booked";
+function hasLiveDtdcCredentials() {
+  return getDtdcVendorProfiles().length > 0;
 }
 
-const events = [];
-const seenActions = new Set();
+function selectDtdcVendorProfiles(vendor) {
+  const profiles = getDtdcVendorProfiles();
+  if (!vendor || vendor === "auto") return profiles;
 
-details
+  const selected = profiles.filter((profile) => profile.vendor.toLowerCase() === String(vendor).toLowerCase());
+  if (!selected.length) throw new Error(`DTDC vendor ${vendor} is not configured`);
+  return selected;
+}
+
+function getPathValue(input, pathName) {
+  return pathName.split(".").reduce((value, key) => {
+    if (!value || typeof value !== "object") return undefined;
+    return value[key];
+  }, input);
+}
+
+function firstValue(input, paths, fallback = "") {
+  for (const pathName of paths) {
+    const value = getPathValue(input, pathName);
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return fallback;
+}
+
+function collectArrays(input, arrays = []) {
+  if (!input || typeof input !== "object") return arrays;
+  if (Array.isArray(input)) {
+    arrays.push(input);
+    input.forEach((item) => collectArrays(item, arrays));
+    return arrays;
+  }
+  Object.values(input).forEach((value) => collectArrays(value, arrays));
+  return arrays;
+}
+
+function scoreTrackingRow(row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return 0;
+  const keys = Object.keys(row).join(" ").toLowerCase();
+  let score = 0;
+  if (/status|scan|action|event|activity|remark|description/.test(keys)) score += 2;
+  if (/date|time|timestamp/.test(keys)) score += 1;
+  if (/branch|location|city|hub|origin/.test(keys)) score += 1;
+  return score;
+}
+
+function findTrackingRows(data) {
+  const direct = firstValue(data, [
+    "statuses",
+    "trackDetails",
+    "trackingDetails",
+    "scanDetails",
+    "scans",
+    "data.statuses",
+    "data.trackDetails",
+    "data.trackingDetails",
+    "data.scanDetails",
+    "data.scans",
+    "result.statuses",
+    "result.trackDetails",
+    "result.trackingDetails",
+  ], null);
+
+  if (Array.isArray(direct)) return direct;
+
+  return collectArrays(data)
+    .filter((items) => items.some((item) => scoreTrackingRow(item) >= 3))
+    .sort((a, b) => {
+      const bScore = b.reduce((total, item) => total + scoreTrackingRow(item), 0);
+      const aScore = a.reduce((total, item) => total + scoreTrackingRow(item), 0);
+      return bScore - aScore;
+    })[0] || [];
+}
+
+function inferStatus(value) {
+  const statusText = String(value || "").toLowerCase();
+  if (statusText.includes("delivered")) return "delivered";
+  if (statusText.includes("out for delivery") || statusText.includes("ofd")) return "out-for-delivery";
+  if (statusText.includes("picked") || statusText.includes("pickup")) return "picked-up";
+  if (statusText.includes("booked") || statusText.includes("manifest")) return "booked";
+  if (statusText.includes("exception") || statusText.includes("rto") || statusText.includes("failed")) return "exception";
+  return "in-transit";
+}
+
+function isFalseLike(value) {
+  return value === false || String(value).toLowerCase() === "false" || String(value) === "0";
+}
+
+async function fetchLiveShipment(awb, vendor = "auto") {
+  const profiles = selectDtdcVendorProfiles(vendor);
+  if (!profiles.length) throw new Error("DTDC tracking token is not configured");
+
+  const errors = [];
+  for (const profile of profiles) {
+    try {
+      return await fetchLiveShipmentWithVendor(awb, profile);
+    } catch (error) {
+      errors.push(`${profile.vendor}: ${error.message || "Tracking failed"}`);
+    }
+  }
+
+  throw new Error(errors.join("; ") || "Shipment not found");
+}
+
+async function fetchLiveShipmentWithVendor(awb, profile) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(process.env.DTDC_TIMEOUT_MS || 15000));
+
+  const headers = {
+    "Content-Type": "application/json",
+    "x-access-token": profile.token,
+  };
+
+  if (isConfiguredSecret(profile.apiKey) && profile.apiKey !== profile.token) {
+    headers["api-key"] = profile.apiKey;
+  }
+
+  let response;
+  try {
+    response = await fetch(DTDC_TRACK_URL, {
+      method: "POST",
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        trkType: "cnno",
+        strcnno: awb,
+        addtnlDtl: "Y",
+      }),
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("DTDC returned a non-JSON tracking response");
+  }
+
+  if (!response.ok) {
+    throw new Error(firstValue(data, ["message", "error", "errorMessage"], `DTDC tracking failed with HTTP ${response.status}`));
+  }
+
+  const statusCode = Number(firstValue(data, ["statusCode", "code", "responseCode"], 200));
+  const successFlag = firstValue(data, ["success", "statusFlag", "isSuccess"], true);
+  const message = String(firstValue(data, ["message", "error", "errorMessage", "status"], ""));
+  if (
+    statusCode >= 400
+    || isFalseLike(successFlag)
+    || /\b(error|failed|invalid|not found)\b/i.test(message)
+  ) {
+    throw new Error(message || "Shipment not found");
+  }
+
+  return mapLiveResponse(awb, data, profile);
+}
+function mapLiveResponse(awb, data, profile = {}) {
+const header = firstValue(data, [
+  "header",
+  "trackHeader",
+  "data.header",
+  "data.trackHeader",
+  "result.header",
+  "result.trackHeader",
+  "shipment",
+  "data.shipment",
+  "cnoteDetails",
+  "data.cnoteDetails",
+  "cnDetails",
+  "data.cnDetails",
+], {});
+const details = findTrackingRows(data);
+const statusText = firstValue(header, [
+  "currentStatusDescription",
+  "currentStatus",
+  "shipmentStatus",
+  "cnoteStatus",
+  "status",
+  "strStatus",
+  "strAction",
+], firstValue(details[0] || {}, [
+  "statusDescription",
+  "strAction",
+  "scan",
+  "event",
+  "activity",
+  "status",
+  "remarks",
+], ""));
+
+const status = inferStatus(statusText || firstValue(details[details.length - 1] || {}, ["strAction", "statusDescription", "status"], ""));
+
+const events = details
   .slice()
   .reverse()
-  .forEach(item => {
-    const event =
-  item.statusDescription || "Shipment Update";
+  .map((item) => ({
+    event: safeText(firstValue(item, [
+      "statusDescription",
+      "strAction",
+      "scanDescription",
+      "scan",
+      "event",
+      "activity",
+      "status",
+      "remarks",
+      "description",
+    ], "Shipment Update")),
+    location: safeText(firstValue(item, [
+      "actBranchName",
+      "actCityName",
+      "scanLocation",
+      "strOrigin",
+      "branch",
+      "location",
+      "city",
+      "hub",
+    ], "")),
+    time: dtdcDateTime(firstValue(item, [
+      "statusTimestamp",
+      "scanDateTime",
+      "dateTime",
+      "timestamp",
+    ], [
+      firstValue(item, ["strActionDate", "actionDate", "eventDate", "scanDate", "date", "statusDate"], ""),
+      firstValue(item, ["strActionTime", "scanTime", "time", "statusTime"], ""),
+    ].join(" ").trim())),
+  }))
+  .filter((item) => item.event || item.location || item.time);
 
-    const normalized = event.toLowerCase();
-
-    if (
-      normalized.includes("in transit") &&
-      seenActions.has("in-transit")
-    ) {
-      return;
-    }
-
-    if (normalized.includes("in transit")) {
-      seenActions.add("in-transit");
-    }
-
-    events.push({
-      event,
-
-      location:
-  item.actBranchName ||
-  item.actCityName ||
-  "",
-
-      time: dtdcDateTime(
-  item.statusTimestamp
-)
-    });
-  });
   return normalizePackage({
     awb,
 
     status,
 
     statusDetail:
-  header.currentStatusDescription || "In Transit",
+  statusText || "In Transit",
 
     origin: {
-      city: header.originCity || "",
+      city: firstValue(header, ["originCity", "origin", "strOrigin", "bookingBranch", "originBranch"], ""),
       pin: ""
     },
 
     destination: {
-      city: header.destinationCity || "",
+      city: firstValue(header, ["destinationCity", "destination", "strDestination", "destinationBranch"], ""),
       pin: ""
     },
 
     eta: dtdcDate(
-  header.opsEdd
+  firstValue(header, ["opsEdd", "edd", "estimatedDeliveryDate", "expectedDeliveryDate", "strRevExpectedDeliveryDate", "strExpectedDeliveryDate"], "")
 ),
 
 booked: dtdcDateTime(
-  `${header.bookingDate} ${header.bookingTime || ""}`
+  [
+    firstValue(header, ["bookingDate", "bookedDate", "pickupDate", "strBookedDate"], ""),
+    firstValue(header, ["bookingTime", "bookedTime", "pickupTime", "strBookedTime"], ""),
+  ].join(" ").trim()
 ),
     service:
-  header.serviceName || "DTDC",
+  firstValue(header, ["serviceName", "serviceType", "service", "product", "strCNProduct", "strCNTypeName"], "DTDC"),
 
-    pieces: Number(header.noOfPieces || 1),
+    weight: firstValue(header, ["weight", "chargedWeight", "actualWeight", "strWeight"], "--"),
+    pieces: Number(firstValue(header, ["noOfPieces", "pieces", "pieceCount", "strPieces"], 1)),
     events,
     updatedAt: new Date().toISOString()
   }, "live");
@@ -458,7 +688,7 @@ booked: dtdcDateTime(
 function dtdcDate(value) {
   if (!value) return "";
 
-  const date = new Date(value);
+  const date = parseDtdcDate(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -474,7 +704,7 @@ function dtdcDate(value) {
 function dtdcDateTime(value) {
   if (!value) return "";
 
-  const date = new Date(value);
+  const date = parseDtdcDate(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -488,6 +718,37 @@ function dtdcDateTime(value) {
     minute: "2-digit",
     hour12: false
   }).format(date);
+}
+
+function parseDtdcDate(value) {
+  const raw = String(value || "").trim();
+  const compact = raw.match(/^(\d{2})(\d{2})(\d{4})(?:\s+(\d{2}):?(\d{2})(?::?(\d{2}))?)?$/);
+  if (compact) {
+    const [, day, month, year, hour = "00", minute = "00", second = "00"] = compact;
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second),
+    );
+  }
+
+  const separated = raw.match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:\s+(\d{1,2}):?(\d{2})(?::?(\d{2}))?)?$/);
+  if (separated) {
+    const [, day, month, year, hour = "00", minute = "00", second = "00"] = separated;
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second),
+    );
+  }
+
+  return new Date(raw);
 }
 function createPackageFromBody(body) {
   const awb = normalizeAwb(body.awb);
@@ -620,10 +881,13 @@ if (req.method === "GET" && pathname === "/about.html") {
   return;
 }
   if (req.method === "GET" && pathname === "/api/health") {
+    const vendors = getDtdcVendorProfiles().map((profile) => profile.vendor);
+    const liveReady = hasLiveDtdcCredentials();
     sendJson(res, 200, {
       reachable: true,
-      hasApiKey: Boolean(process.env.DTDC_API_KEY && process.env.DTDC_API_KEY !== "your_key_here"),
-      demoMode: !(process.env.DTDC_API_KEY && process.env.DTDC_API_KEY !== "your_key_here"),
+      hasApiKey: liveReady,
+      demoMode: !liveReady,
+      vendors,
       managedCount: readPackages().length,
     });
     return;
@@ -650,7 +914,7 @@ if (req.method === "GET" && pathname === "/about.html") {
         return;
       }
 
-      sendJson(res, 200, { shipment: publicShipment(await fetchLiveShipment(awb)) });
+      sendJson(res, 200, { shipment: publicShipment(await fetchLiveShipment(awb, body.vendor || "auto")) });
     } catch (error) {
       sendJson(res, 502, { error: error.message || "Tracking failed" });
     }
