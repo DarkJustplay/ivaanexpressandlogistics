@@ -425,6 +425,12 @@ function selectDtdcVendorProfiles(vendor) {
   return selected;
 }
 
+function inferDtdcVendorForAwb(awb) {
+  const normalized = normalizeAwb(awb);
+  if (normalized.startsWith("G")) return "LL2487";
+  return "auto";
+}
+
 function getPathValue(input, pathName) {
   return pathName.split(".").reduce((value, key) => {
     if (!value || typeof value !== "object") return undefined;
@@ -438,6 +444,35 @@ function firstValue(input, paths, fallback = "") {
     if (value !== undefined && value !== null && String(value).trim() !== "") {
       return value;
     }
+  }
+  return fallback;
+}
+
+function isPlaceholderValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return !normalized
+    || normalized === "null"
+    || normalized === "undefined"
+    || normalized === "origin"
+    || normalized === "destination"
+    || normalized === "na"
+    || normalized === "n/a";
+}
+
+function firstUsefulValue(input, paths, fallback = "") {
+  for (const pathName of paths) {
+    const value = getPathValue(input, pathName);
+    if (value !== undefined && value !== null && !isPlaceholderValue(value)) {
+      return value;
+    }
+  }
+  return fallback;
+}
+
+function lastUsefulValue(items, paths, fallback = "") {
+  for (const item of items.slice().reverse()) {
+    const value = firstUsefulValue(item, paths, "");
+    if (!isPlaceholderValue(value)) return value;
   }
   return fallback;
 }
@@ -493,7 +528,8 @@ function findTrackingRows(data) {
 
 function inferStatus(value) {
   const statusText = String(value || "").toLowerCase();
-  if (statusText.includes("delivered")) return "delivered";
+  if (statusText.includes("not delivered") || statusText.includes("nondlv")) return "exception";
+  if (statusText.includes("delivered") || /\bdlv\b/.test(statusText)) return "delivered";
   if (statusText.includes("out for delivery") || statusText.includes("ofd")) return "out-for-delivery";
   if (statusText.includes("picked") || statusText.includes("pickup")) return "picked-up";
   if (statusText.includes("booked") || statusText.includes("manifest")) return "booked";
@@ -506,7 +542,8 @@ function isFalseLike(value) {
 }
 
 async function fetchLiveShipment(awb, vendor = "auto") {
-  const profiles = selectDtdcVendorProfiles(vendor);
+  const selectedVendor = !vendor || vendor === "auto" ? inferDtdcVendorForAwb(awb) : vendor;
+  const profiles = selectDtdcVendorProfiles(selectedVendor);
   if (!profiles.length) throw new Error("DTDC tracking token is not configured");
 
   const errors = [];
@@ -609,7 +646,18 @@ const statusText = firstValue(header, [
   "remarks",
 ], ""));
 
-const status = inferStatus(statusText || firstValue(details[details.length - 1] || {}, ["strAction", "statusDescription", "status"], ""));
+const latestAction = firstValue(details[details.length - 1] || {}, [
+  "statusDescription",
+  "strAction",
+  "scanDescription",
+  "scan",
+  "event",
+  "activity",
+  "status",
+  "remarks",
+  "description",
+], "");
+const status = inferStatus([statusText, latestAction].filter(Boolean).join(" "));
 
 const events = details
   .slice()
@@ -654,15 +702,18 @@ const events = details
     status,
 
     statusDetail:
-  statusText || "In Transit",
+  latestAction || statusText || "In Transit",
 
     origin: {
-      city: firstValue(header, ["originCity", "origin", "strOrigin", "bookingBranch", "originBranch"], ""),
+      city: firstUsefulValue(header, ["originCity", "origin", "strOrigin", "bookingBranch", "originBranch"], "")
+        || lastUsefulValue(details, ["strOrigin", "origin", "actCityName", "location"], ""),
       pin: ""
     },
 
     destination: {
-      city: firstValue(header, ["destinationCity", "destination", "strDestination", "destinationBranch"], ""),
+      city: firstUsefulValue(header, ["destinationCity", "destination", "strDestination", "destinationBranch"], "")
+        || lastUsefulValue(details, ["strDestination", "destination", "destinationBranch"], "")
+        || lastUsefulValue(details, ["strOrigin", "actCityName", "location"], ""),
       pin: ""
     },
 
@@ -803,10 +854,20 @@ function patchPackage(pkg, body) {
 
 async function refreshManagedPackage(pkg, vendor = "auto") {
   const live = await fetchLiveShipment(pkg.awb, vendor);
+  const current = normalizePackage(pkg, "managed");
+  const incoming = normalizePackage(live, "live");
+  const keepCurrentStatus = Number(current.progress || 0) > Number(incoming.progress || 0);
 
   return normalizePackage({
-    ...pkg,
-    ...live,
+    ...current,
+    ...incoming,
+    ...(keepCurrentStatus ? {
+      status: current.status,
+      statusName: current.statusName,
+      statusDetail: current.statusDetail,
+      progress: current.progress,
+      events: current.events,
+    } : {}),
     customer: pkg.customer,
     internalNote: pkg.internalNote,
     createdAt: pkg.createdAt,
@@ -907,7 +968,7 @@ if (req.method === "GET" && pathname === "/about.html") {
 
       if (managed && body.mode === "live") {
         try {
-          const refreshed = await refreshManagedPackage(managed, body.vendor || "auto");
+          const refreshed = await refreshManagedPackage(managed, body.vendor || inferDtdcVendorForAwb(awb));
           const nextPackages = upsertPackage(packages, refreshed);
           writePackages(nextPackages);
           sendJson(res, 200, { shipment: publicShipment(refreshed), refreshed: true });
@@ -931,7 +992,7 @@ if (req.method === "GET" && pathname === "/about.html") {
         return;
       }
 
-      sendJson(res, 200, { shipment: publicShipment(await fetchLiveShipment(awb, body.vendor || "auto")) });
+      sendJson(res, 200, { shipment: publicShipment(await fetchLiveShipment(awb, body.vendor || inferDtdcVendorForAwb(awb))) });
     } catch (error) {
       sendJson(res, 502, { error: error.message || "Tracking failed" });
     }

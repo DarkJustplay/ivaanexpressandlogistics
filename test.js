@@ -4,7 +4,7 @@ loadEnvFile();
 
 async function test() {
   const awb = process.argv[2] || "D1015544368";
-  const requestedVendor = process.argv[3] || "auto";
+  const requestedVendor = process.argv[3] || inferVendorForAwb(awb);
   const profiles = selectProfiles(requestedVendor);
 
   if (!profiles.length) {
@@ -48,6 +48,12 @@ async function test() {
 }
 
 test();
+
+function inferVendorForAwb(awb) {
+  const normalized = String(awb || "").trim().toUpperCase();
+  if (normalized.startsWith("G")) return "LL2487";
+  return "auto";
+}
 
 function selectProfiles(vendor) {
   const profiles = getProfiles();
