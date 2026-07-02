@@ -801,8 +801,8 @@ function patchPackage(pkg, body) {
   return next;
 }
 
-async function refreshManagedPackage(pkg) {
-  const live = await fetchLiveShipment(pkg.awb);
+async function refreshManagedPackage(pkg, vendor = "auto") {
+  const live = await fetchLiveShipment(pkg.awb, vendor);
 
   return normalizePackage({
     ...pkg,
@@ -904,6 +904,23 @@ if (req.method === "GET" && pathname === "/about.html") {
 
       const packages = readPackages();
       const managed = findPackage(packages, awb);
+
+      if (managed && body.mode === "live") {
+        try {
+          const refreshed = await refreshManagedPackage(managed, body.vendor || "auto");
+          const nextPackages = upsertPackage(packages, refreshed);
+          writePackages(nextPackages);
+          sendJson(res, 200, { shipment: publicShipment(refreshed), refreshed: true });
+        } catch (error) {
+          sendJson(res, 200, {
+            shipment: publicShipment(managed),
+            refreshed: false,
+            warning: error.message || "Live refresh failed",
+          });
+        }
+        return;
+      }
+
       if (managed) {
         sendJson(res, 200, { shipment: publicShipment(managed) });
         return;
